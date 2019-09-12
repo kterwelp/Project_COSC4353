@@ -1,5 +1,3 @@
-
-
 import java.awt.*;
 import javax.swing.*;
 import java.io.*;
@@ -10,6 +8,9 @@ import javax.swing.JFrame;
 import javax.swing.text.*;
 import javax.swing.tree.*;
 import java.util.*;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import FileExplorer;
 
 class editor2 extends JFrame implements ActionListener{
     
@@ -17,9 +18,11 @@ class editor2 extends JFrame implements ActionListener{
     JFrame frame;
     JScrollPane scroll_bar;
     JButton b1, b2, b3;
-    FileTree panel;
+    FileExplorer panel;
     
     String direct = "";
+    String project = "";
+    String file = "";
 
     editor2(){
         frame = new JFrame("editor");
@@ -39,7 +42,7 @@ class editor2 extends JFrame implements ActionListener{
         JMenuItem fm_newProject = new JMenuItem("New Project");
         JMenuItem fm_openProject = new JMenuItem("Open Project");
         JMenuItem fm_saveProject = new JMenuItem("Save Project");
-        JMenuItem fm_closeProject = new JMenuItem("Close current Project");
+        JMenuItem fm_closeProject = new JMenuItem("Close Project");
         JMenuItem fm_newFile = new JMenuItem("New File");
         JMenuItem fm_openFile = new JMenuItem("Open File");
         JMenuItem fm_saveFile = new JMenuItem("Save File");
@@ -58,9 +61,11 @@ class editor2 extends JFrame implements ActionListener{
         file_menu.add(fm_openProject);
         file_menu.add(fm_saveProject);
         file_menu.add(fm_closeProject);
+        file_menu.addSeparator();
         file_menu.add(fm_newFile);
         file_menu.add(fm_openFile);
         file_menu.add(fm_saveFile);
+        file_menu.addSeparator();
         file_menu.add(fm_exit);
 
         JMenu edit_menu = new JMenu("Edit");
@@ -101,9 +106,7 @@ class editor2 extends JFrame implements ActionListener{
 
         frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
         frame.setJMenuBar(menubar);
-        //frame.add(text);
-        //frame.add(scroll_bar);
-        panel = new FileTree();
+        panel = new FileExplorer();
         panel.getPreferredSize();
         frame.setLayout(new BorderLayout());
         frame.add(panel,BorderLayout.SOUTH);
@@ -133,32 +136,54 @@ class editor2 extends JFrame implements ActionListener{
             frame.dispose();
             System.exit(0);
         }
-        else if (s.equals("Open Project")) {
-            JFileChooser choose_file = new JFileChooser("f:");
-            choose_file.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            choose_file.setPreferredSize(new Dimension(900,700));
-            int r = choose_file.showOpenDialog(null);
-            String dir = "";
-            if (r == JFileChooser.APPROVE_OPTION){
-                File file = new File(choose_file.getSelectedFile().getAbsolutePath());
+        else if (s.equals("Close Project")) {
 
-                dir = file.getAbsolutePath();
+            if (direct != "") {
 
-                panel.updateList(file);
-                panel.revalidate();
-                panel.repaint();
+                direct = "";
 
-                JOptionPane.showMessageDialog(frame, "Currently in Project Directory: " + dir);
+                JOptionPane.showMessageDialog(frame, "Project Closed");
+
+                panel.updateList(new File(""));
+            } 
+            else {
+                JOptionPane.showMessageDialog(frame, "No project is open.");
             }
-            else
-                JOptionPane.showMessageDialog(frame, "No File Is Opened");
 
-            direct = dir;
         }
-        else if (s.equals("Save Project") && direct != "") {
-            File folder = new File(direct);
-            for (File file : folder.listFiles()) {
-                if (file.getName().endsWith(".txt") || file.getName().endsWith(".java") || 
+        else if (s.equals("Open Project")) {
+
+            if (direct == "") {
+
+                JFileChooser choose_file = new JFileChooser("f:");
+                choose_file.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                choose_file.setPreferredSize(new Dimension(900,700));
+                int r = choose_file.showOpenDialog(null);
+                String dir = "";
+                if (r == JFileChooser.APPROVE_OPTION){
+                    File file = new File(choose_file.getSelectedFile().getAbsolutePath());
+
+                    dir = file.getAbsolutePath();
+
+                    panel.updateList(file);
+
+                    JOptionPane.showMessageDialog(frame, "Currently in Project Directory: " + dir);
+
+                    direct = dir;
+                }
+                else
+                    JOptionPane.showMessageDialog(frame, "No File Is Opened");
+            }
+            else {
+                JOptionPane.showMessageDialog(frame, "Cannot open project.  Please close current project");
+            }
+        }
+        else if (s.equals("Save Project")) {
+            
+            if (direct != "") {
+                File folder = new File(direct);
+                for (File file : folder.listFiles()) {
+                    if (file.getName().endsWith(".txt") || file.getName().endsWith(".java") || 
                         file.getName().endsWith(".class")) {
                             try{
                                 FileWriter wr = new FileWriter(file, false);
@@ -171,61 +196,50 @@ class editor2 extends JFrame implements ActionListener{
                             catch (Exception evt){
                                 JOptionPane.showMessageDialog(frame, evt.getMessage()); 
                             }
+                    }
                 }
-            }
 
-            JOptionPane.showMessageDialog(frame, "All Project Files Saved");
+                JOptionPane.showMessageDialog(frame, "All Project Files Saved");
+            } 
+            else {
+                JOptionPane.showMessageDialog(frame, "Cannot save project.");
+            } 
         }
         else if (s.equals("New Project")) {
-            JFileChooser choose_file = new JFileChooser("f:");
-            choose_file.setPreferredSize(new Dimension(900,700));
-            int r = choose_file.showSaveDialog(null);
-            String dir = "";
-            if (r == JFileChooser.APPROVE_OPTION){
-                File file = new File(choose_file.getSelectedFile().getAbsolutePath());
-                try{
 
-                    file.mkdir();
+            if (direct == "") {
 
-                    dir = file.getAbsolutePath();
+                JFileChooser choose_file = new JFileChooser("f:");
+                choose_file.setPreferredSize(new Dimension(900,700));
+                int r = choose_file.showSaveDialog(null);
+                String dir = "";
+                if (r == JFileChooser.APPROVE_OPTION){
+                    File file = new File(choose_file.getSelectedFile().getAbsolutePath());
+                    try{
 
-                    JOptionPane.showMessageDialog(frame, "New Project Created");
+                        file.mkdir();
+            
+                        dir = file.getAbsolutePath();
 
-                    panel.updateList(file);
-                    panel.revalidate();
-                    panel.repaint();
+                        JOptionPane.showMessageDialog(frame, "New Project Created");
 
+                        panel.updateList(file);
+                    }
+                    catch (Exception evt){
+                        JOptionPane.showMessageDialog(frame, evt.getMessage()); 
+                    }   
+
+                    direct = dir;
                 }
-                catch (Exception evt){
-                    JOptionPane.showMessageDialog(frame, evt.getMessage()); 
-                }
+                else
+                    JOptionPane.showMessageDialog(frame, "No Project Is Saved");
             }
-            else
-                JOptionPane.showMessageDialog(frame, "No Project Is Saved");
+            else {
+                JOptionPane.showMessageDialog(frame, "Cannot start a new project. Please close any open project or file.");
+            }
+        }
+        else if (s.equals("Open File")){
 
-            direct = dir;
-        }
-        else if (s.equals("Close current Project"))
-        {
-        	String dir = "";
-        	try {
-        	
-        		File file = new File(dir);
-        		
-        		panel.closeList();
-        		
-        		panel.updateList(file);
-        		panel.revalidate();
-        		panel.repaint();
-        	}
-        	catch (Exception evt){
-        		JOptionPane.showMessageDialog(frame, evt.getMessage());
-        	}
-        	
-        	JOptionPane.showMessageDialog(frame, "Previous Project closed - current directory is empty");
-        	
-        }
-        else if (s.equals("Open File") && direct != ""){
             JFileChooser choose_file = new JFileChooser(direct);
             choose_file.setPreferredSize(new Dimension(900,700));
             int r = choose_file.showOpenDialog(null);
@@ -247,17 +261,19 @@ class editor2 extends JFrame implements ActionListener{
                     text.setText(all_line);
                     scroll_bar.setViewportView(text);
                     dir = file.getAbsolutePath();
-                }
+                }   
                 catch (Exception evt){
                     JOptionPane.showMessageDialog(frame, evt.getMessage());
                 }
+
+                direct = dir;
             }
             else
                 JOptionPane.showMessageDialog(frame, "No File Is Opened");
 
-            direct = dir;
         }
-        else if (s.equals("Save File") && direct != "") {
+        else if (s.equals("Save File")) {
+
             JFileChooser choose_file = new JFileChooser(direct);
             choose_file.setPreferredSize(new Dimension(900,700));
             int r = choose_file.showSaveDialog(null);
@@ -276,8 +292,8 @@ class editor2 extends JFrame implements ActionListener{
                     File curDir = new File(file.getParent());
 
                     panel.updateList(curDir);
-                    panel.revalidate();
-                    panel.repaint();
+
+                    direct = file.getParent();
                 }
                 catch (Exception evt){
                     JOptionPane.showMessageDialog(frame, evt.getMessage()); 
@@ -285,12 +301,12 @@ class editor2 extends JFrame implements ActionListener{
             }
             else
                 JOptionPane.showMessageDialog(frame, "No File Is Saved");
-
-            direct = dir;
+            
         }
         else if (s.equals("New File")){
-            text.setText("");
+            text.setText("");     
             scroll_bar.setViewportView(text);
+            
         }
         else if (s.equals("Debug")){
 
@@ -337,80 +353,6 @@ class editor2 extends JFrame implements ActionListener{
         editor2 e = new editor2();
     }
 }
-
-class FileTree extends JPanel {
-    JTree tree;
-    DefaultMutableTreeNode root;
-    JScrollPane pane;
-    public FileTree() {
-      root = new DefaultMutableTreeNode("root", true);
-      getList(root, new File("C:/Users/kterw/OneDrive/Desktop"));
-      setLayout(new BorderLayout());
-
-      tree = new JTree(root);
-      tree.setRootVisible(false);
-      final Font currentFont = tree.getFont();
-      final Font bigFont = new Font(currentFont.getName(), currentFont.getStyle(), currentFont.getSize() + 12);
-      tree.setFont(bigFont);
-      pane = new JScrollPane((JTree)tree);
-      add(pane,"Center");
-      }
-  
-    public Dimension getPreferredSize(){
-      return new Dimension(400, 320);
-      }
-  
-    public void getList(DefaultMutableTreeNode node, File f) {
-       if(!f.isDirectory()) {
-           // We keep only JAVA source file for display in this HowTo
-           if (f.getName().endsWith("java") || f.getName().endsWith("txt") || f.getName().endsWith("class")) {
-              System.out.println("FILE  -  " + f.getName());
-              DefaultMutableTreeNode child = new DefaultMutableTreeNode(f);
-              node.add(child);
-              }
-           }
-       else {
-           System.out.println("DIRECTORY  -  " + f.getName());
-           DefaultMutableTreeNode child = new DefaultMutableTreeNode(f);
-           node.add(child);
-           File fList[] = f.listFiles();
-           for(int i = 0; i  < fList.length; i++)
-               getList(child, fList[i]);
-           }
-      }
-
-      public void updateList(File file)
-      {
-        removeAll();
-        root = new DefaultMutableTreeNode("root", true);
-        getList(root, file);
-        setLayout(new BorderLayout());
-  
-        tree = new JTree(root);
-        tree.setRootVisible(false);
-        final Font currentFont = tree.getFont();
-        final Font bigFont = new Font(currentFont.getName(), currentFont.getStyle(), currentFont.getSize() + 12);
-        tree.setFont(bigFont);
-        pane = new JScrollPane((JTree)tree);
-        add(pane,"Center");  
-      }
-      
-      public void closeList ()
-    	  {removeAll();}
-    
-    // public static void main(String s[]){
-    //   MyJFrame frame = new MyJFrame("Directory explorer");
-    //   }
-    }
-  
- /* class WindowCloser extends WindowAdapter {
-    public void windowClosing(WindowEvent e) {
-      Window win = e.getWindow();
-      win.setVisible(false);
-      System.exit(0);
-      }
-    }
-  */
   
 //   class MyJFrame extends JFrame {
 //     JButton b1, b2, b3;
