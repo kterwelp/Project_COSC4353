@@ -262,7 +262,6 @@ class editor2 extends JFrame implements ActionListener{
             JFileChooser choose_file = new JFileChooser(direct);
             choose_file.setPreferredSize(new Dimension(900,700));
             int r = choose_file.showOpenDialog(null);
-            String dir = "";
             if (r == JFileChooser.APPROVE_OPTION){
                 File file = new File(choose_file.getSelectedFile().getAbsolutePath());
 
@@ -277,16 +276,21 @@ class editor2 extends JFrame implements ActionListener{
                     while ((line = br.readLine()) != null){
                         all_line = all_line + "\n" + line;
                     }
+                    br.close();
                     text.setText(all_line);
                     scroll_bar.setViewportView(text);
-                    dir = file.getAbsolutePath();
+                    direct = file.getParent();
+                    curFile = file;
+
+                    File curDir = new File(file.getParent());
+
+                    panel.updateList(curDir);
+
                     curFile = file;
                 }   
                 catch (Exception evt){
                     JOptionPane.showMessageDialog(frame, evt.getMessage());
                 }
-
-                direct = dir;
             }
             else
                 JOptionPane.showMessageDialog(frame, "No File Is Opened");
@@ -355,21 +359,16 @@ class editor2 extends JFrame implements ActionListener{
 
         }
         else if (s.equals("Delete File")) {
-
-            try {
-                if (curFile.delete())
-                {
-                    text.setText(""); 
-                    JOptionPane.showMessageDialog(frame, "File Deleted");
-                    curFile = null;
-                }
-                else
-                {
-                    JOptionPane.showMessageDialog(frame, "Unable to Delete File");
-                }
+            
+            if (curFile.delete())
+            {
+                text.setText(""); 
+                JOptionPane.showMessageDialog(frame, "File Deleted");
+                curFile = null;
             }
-            catch (Exception evt) {
-                JOptionPane.showMessageDialog(frame, "Unable to Delete File"); 
+            else
+            {
+                JOptionPane.showMessageDialog(frame, "Unable to Delete File");
             }
         }
         else if (s.equals("New File")){
@@ -377,7 +376,6 @@ class editor2 extends JFrame implements ActionListener{
             JFileChooser choose_file = new JFileChooser(direct);
             choose_file.setPreferredSize(new Dimension(900,700));
             int r = choose_file.showSaveDialog(null);
-            String dir = "";
             if (r == JFileChooser.APPROVE_OPTION){
                 File file = new File(choose_file.getSelectedFile().getAbsolutePath());
                 try{
@@ -387,7 +385,6 @@ class editor2 extends JFrame implements ActionListener{
                     w.write(text.getText());
                     w.flush();
                     w.close();
-                    dir = file.getAbsolutePath();
 
                     File curDir = new File(file.getParent());
 
