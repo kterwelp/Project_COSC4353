@@ -1,3 +1,5 @@
+// package editorP;
+
 import java.awt.*;
 import javax.swing.*;
 import java.io.*;
@@ -8,13 +10,17 @@ import javax.swing.JFrame;
 import javax.swing.text.*;
 import javax.swing.tree.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
-import FileExplorer;
+
 
 class editor2 extends JFrame implements ActionListener{
     
-    JTextArea text;
+    JTextPane text;
+    Document doc;
     JFrame frame;
     JScrollPane scroll_bar;
     JButton b1, b2, b3;
@@ -23,8 +29,10 @@ class editor2 extends JFrame implements ActionListener{
     String direct = "";
     String project = "";
     String file = "";
-
-    editor2(){
+    File curFile;
+            
+    editor2()
+    {
         frame = new JFrame("editor");
 
         Font f = new Font("sans-serif", Font.PLAIN, 25);
@@ -33,9 +41,12 @@ class editor2 extends JFrame implements ActionListener{
         UIManager.put("FileChooser.listFont",new
         javax.swing.plaf.FontUIResource(f));
 
-        text = new JTextArea();
+        text = new JTextPane();
+        ((AbstractDocument) text.getDocument()).setDocumentFilter(new customDocumentFilter());
+        doc = text.getDocument();
+        doc.addDocumentListener(new textareaMonitor());
         scroll_bar = new JScrollPane();
-
+        
         JMenuBar menubar = new JMenuBar();
 
         JMenu file_menu = new JMenu("File");
@@ -46,6 +57,8 @@ class editor2 extends JFrame implements ActionListener{
         JMenuItem fm_newFile = new JMenuItem("New File");
         JMenuItem fm_openFile = new JMenuItem("Open File");
         JMenuItem fm_saveFile = new JMenuItem("Save File");
+        JMenuItem fm_saveFileAs = new JMenuItem("Save File As...");
+        JMenuItem fm_deleteFile = new JMenuItem("Delete File");
         JMenuItem fm_exit = new JMenuItem("Exit");
 
         fm_newProject.addActionListener(this);
@@ -55,6 +68,8 @@ class editor2 extends JFrame implements ActionListener{
         fm_newFile.addActionListener(this);
         fm_openFile.addActionListener(this);
         fm_saveFile.addActionListener(this);
+        fm_saveFileAs.addActionListener(this);
+        fm_deleteFile.addActionListener(this);
         fm_exit.addActionListener(this);
 
         file_menu.add(fm_newProject);
@@ -65,6 +80,8 @@ class editor2 extends JFrame implements ActionListener{
         file_menu.add(fm_newFile);
         file_menu.add(fm_openFile);
         file_menu.add(fm_saveFile);
+        file_menu.add(fm_saveFileAs);
+        file_menu.add(fm_deleteFile);
         file_menu.addSeparator();
         file_menu.add(fm_exit);
 
@@ -119,6 +136,8 @@ class editor2 extends JFrame implements ActionListener{
 
         //frame.addWindowListener(new WindowCloser());
     }
+    
+    
 
     public void actionPerformed(ActionEvent e){
         String s = e.getActionCommand();
@@ -235,7 +254,7 @@ class editor2 extends JFrame implements ActionListener{
                     JOptionPane.showMessageDialog(frame, "No Project Is Saved");
             }
             else {
-                JOptionPane.showMessageDialog(frame, "Cannot start a new project. Please close any open project or file.");
+                JOptionPane.showMessageDialog(frame, "Cannot start a new project. Please close the current project.");
             }
         }
         else if (s.equals("Open File")){
@@ -261,6 +280,7 @@ class editor2 extends JFrame implements ActionListener{
                     text.setText(all_line);
                     scroll_bar.setViewportView(text);
                     dir = file.getAbsolutePath();
+                    curFile = file;
                 }   
                 catch (Exception evt){
                     JOptionPane.showMessageDialog(frame, evt.getMessage());
@@ -273,6 +293,35 @@ class editor2 extends JFrame implements ActionListener{
 
         }
         else if (s.equals("Save File")) {
+
+            if (curFile != null)
+            {
+                File file = new File(curFile.getAbsolutePath());
+                try{
+                    FileWriter wr = new FileWriter(file, false);
+                    BufferedWriter w = new BufferedWriter(wr);
+
+                    w.write(text.getText());
+                    w.flush();
+                    w.close();
+
+                    File curDir = new File(file.getParent());
+
+                    panel.updateList(curDir);
+
+                    direct = file.getParent();
+
+                    curFile = file;
+                }
+                catch (Exception evt){
+                    JOptionPane.showMessageDialog(frame, evt.getMessage()); 
+                } 
+            }
+            else
+                JOptionPane.showMessageDialog(frame, "Unable to Save File");                  
+            
+        }
+        else if (s.equals("Save File As...")) {
 
             JFileChooser choose_file = new JFileChooser(direct);
             choose_file.setPreferredSize(new Dimension(900,700));
@@ -294,6 +343,8 @@ class editor2 extends JFrame implements ActionListener{
                     panel.updateList(curDir);
 
                     direct = file.getParent();
+
+                    curFile = file;
                 }
                 catch (Exception evt){
                     JOptionPane.showMessageDialog(frame, evt.getMessage()); 
@@ -301,11 +352,60 @@ class editor2 extends JFrame implements ActionListener{
             }
             else
                 JOptionPane.showMessageDialog(frame, "No File Is Saved");
-            
+
+        }
+        else if (s.equals("Delete File")) {
+
+            try {
+                if (curFile.delete())
+                {
+                    text.setText(""); 
+                    JOptionPane.showMessageDialog(frame, "File Deleted");
+                    curFile = null;
+                }
+                else
+                {
+                    JOptionPane.showMessageDialog(frame, "Unable to Delete File");
+                }
+            }
+            catch (Exception evt) {
+                JOptionPane.showMessageDialog(frame, "Unable to Delete File"); 
+            }
         }
         else if (s.equals("New File")){
-            text.setText("");     
-            scroll_bar.setViewportView(text);
+            
+            JFileChooser choose_file = new JFileChooser(direct);
+            choose_file.setPreferredSize(new Dimension(900,700));
+            int r = choose_file.showSaveDialog(null);
+            String dir = "";
+            if (r == JFileChooser.APPROVE_OPTION){
+                File file = new File(choose_file.getSelectedFile().getAbsolutePath());
+                try{
+                    FileWriter wr = new FileWriter(file, false);
+                    BufferedWriter w = new BufferedWriter(wr);
+
+                    w.write(text.getText());
+                    w.flush();
+                    w.close();
+                    dir = file.getAbsolutePath();
+
+                    File curDir = new File(file.getParent());
+
+                    panel.updateList(curDir);
+
+                    direct = file.getParent();
+
+                    curFile = file;
+
+                    text.setText("");     
+                    scroll_bar.setViewportView(text);
+                }
+                catch (Exception evt){
+                    JOptionPane.showMessageDialog(frame, evt.getMessage()); 
+                }
+            }
+            else
+                JOptionPane.showMessageDialog(frame, "Unable to Create New File");
             
         }
         else if (s.equals("Debug")){
@@ -314,7 +414,7 @@ class editor2 extends JFrame implements ActionListener{
                 int file_i = direct.lastIndexOf("\\") + 1;
                 String file_name = direct.substring(file_i);
                 String file_dir = direct.substring(0, file_i);
-                String command = String.format("cmd /c start cmd.exe /K \"pushd %s && javac %s\"", file_dir, file_name);
+                String command = String.format("cmd /c start cmd.exe /K \"pushd %s && javac *.java\"", file_dir);
                 Runtime.getRuntime().exec(command);
             }
             catch (Exception evt){ 
@@ -336,7 +436,7 @@ class editor2 extends JFrame implements ActionListener{
             } 
         }
     }
-
+    
     public static void main(String[] argv){
 
         try {
@@ -352,19 +452,121 @@ class editor2 extends JFrame implements ActionListener{
 
         editor2 e = new editor2();
     }
+    
+    final class customDocumentFilter extends DocumentFilter
+    {
+    	
+    	private final StyledDocument styledDocument = text.getStyledDocument();
+    	private final StyleContext styleContext = StyleContext.getDefaultStyleContext();
+    	
+    	private final AttributeSet booleanAttributeSet = styleContext.addAttribute(styleContext.getEmptySet(), StyleConstants.Foreground, Color.BLUE);
+    	private final AttributeSet arithmeticAttributeSet = styleContext.addAttribute(styleContext.getEmptySet(), StyleConstants.Foreground, Color.RED);
+    	private final AttributeSet quoteAttributeSet = styleContext.addAttribute(styleContext.getEmptySet(), StyleConstants.Foreground, new Color(0,102,0));
+    	private final AttributeSet blackAttributeSet = styleContext.addAttribute(styleContext.getEmptySet(), StyleConstants.Foreground, Color.BLACK);
+    	
+    	Pattern patternBool = buildPatternBool();
+    	Pattern patternQuotes = buildPatternQuotes();
+    	
+    	@Override
+        public void insertString(FilterBypass fb, int offset, String text, AttributeSet attributeSet) throws BadLocationException {
+            super.insertString(fb, offset, text, attributeSet);
+
+            handleTextChanged();
+        }
+
+        @Override
+        public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
+            super.remove(fb, offset, length);
+
+            handleTextChanged();
+        }
+
+        @Override
+        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attributeSet) throws BadLocationException {
+            super.replace(fb, offset, length, text, attributeSet);
+
+            handleTextChanged();
+        }
+        
+        private Pattern buildPatternBool()
+        {
+        	Pattern regexBool = Pattern.compile("\\b(?:if|else|while|for)\\b");
+        	
+        	return regexBool;
+        }
+        
+        private Pattern buildPatternQuotes()
+        {
+        	Pattern regexQuotes = Pattern.compile("\"([^\"]*)\"");
+        	
+        	return regexQuotes;
+        }
+        
+        private void handleTextChanged()
+        {
+        	SwingUtilities.invokeLater(new Runnable() {
+        		@Override
+        		public void run() 
+        		{updateTextStyles();}
+        	});
+        }
+        
+        private void updateTextStyles() 
+        {
+        	// Clears existing styles
+        	styledDocument.setCharacterAttributes(0, text.getText().length(), blackAttributeSet, true);
+        	
+        	String temp = text.getText();
+        	char [] tempCharArray = temp.toCharArray();
+        	
+        	// Look for matching substrings and highlight them
+        	Matcher matcherBool = patternBool.matcher(temp);
+        	Matcher matcherQuotes = patternQuotes.matcher(temp);
+        	
+        	while (matcherBool.find())
+        		styledDocument.setCharacterAttributes(matcherBool.start(), matcherBool.end()- matcherBool.start(), booleanAttributeSet, false);
+        	
+        	while (matcherQuotes.find())
+        		styledDocument.setCharacterAttributes(matcherQuotes.start(), matcherQuotes.end() - matcherQuotes.start(), quoteAttributeSet, false);;
+        	
+        	
+        	for (int i = 0; i < tempCharArray.length; i++)
+        	{
+        		switch(tempCharArray[i])
+        		{
+        		case '+':
+        		case '-':
+        		case '*':
+        		case '/':
+        		case '%':
+        			System.out.println(i);
+        			styledDocument.setCharacterAttributes(i ,1, arithmeticAttributeSet, false);
+        			
+        		}
+        		
+        		// If conditional to check for || and && characters - we need to check for an extra character - this handles it
+        		
+        		
+        		if (tempCharArray[i] == '|' || tempCharArray[i] == '&')
+        		{
+        			if (i+1 < tempCharArray.length)
+        				
+        				switch(tempCharArray[i+1])
+        				{
+        				case '|':
+        				case '&':
+        					styledDocument.setCharacterAttributes(i, 2, arithmeticAttributeSet, false);
+        				}
+        		}
+        		
+        		// Another branch to check for strings while we're still in the loop
+        		
+        		
+        	}
+        	
+        }
+    }
 }
+
+
   
-//   class MyJFrame extends JFrame {
-//     JButton b1, b2, b3;
-//     SimpleTree panel;
-//     MyJFrame(String s) {
-//       super(s);
-//       panel = new SimpleTree();
-//       getContentPane().add(panel,"Center");
-//       setSize(600,600);
-//       setVisible(true);
-//       setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-//       addWindowListener(new WindowCloser());
-//       }
-  
-//   }
